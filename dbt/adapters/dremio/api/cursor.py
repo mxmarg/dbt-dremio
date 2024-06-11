@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import ast
 import time
 
 import agate
@@ -85,7 +85,15 @@ class DremioCursor:
         if bindings is None:
             self._initialize()
 
-            json_payload = sql_endpoint(self._parameters, sql, context=None)
+            # Special syntax to parse SQL context from last row in SQL files
+            context = None
+            last_lines = sql.split("\n")[-2:-1] # Handle newline at EOF
+            for l in last_lines:
+                if "--SQL_CONTEXT=" in l:
+                    context = l.replace("--SQL_CONTEXT=", "")
+                    context = ast.literal_eval(context)
+
+            json_payload = sql_endpoint(self._parameters, sql, context=context)
 
             self._job_id = json_payload["id"]
 
