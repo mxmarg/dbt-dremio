@@ -39,6 +39,7 @@ class DremioCursor:
         self._rowcount = -1
         self._job_results = None
         self._table_results: agate.Table = None
+        self.CONTEXT_IDENTIFIER = "--SQL_CONTEXT="
 
     @property
     def parameters(self):
@@ -79,7 +80,7 @@ class DremioCursor:
         self._initialize()
         self.closed = True
 
-    def execute(self, sql, bindings=None, fetch=False):
+    def execute(self, sql: str, bindings=None, fetch=False):
         if self.closed:
             raise Exception("CursorClosed")
         if bindings is None:
@@ -87,11 +88,12 @@ class DremioCursor:
 
             # Special syntax to parse SQL context from last row in SQL files
             context = None
-            last_lines = sql.split("\n")[-2:-1] # Handle newline at EOF
+            last_lines = sql.split("\n")[-2:] # Handle newline at EOF
             for l in last_lines:
-                if "--SQL_CONTEXT=" in l:
-                    context = l.replace("--SQL_CONTEXT=", "")
+                if l.startswith(self.CONTEXT_IDENTIFIER):
+                    context = l.replace(self.CONTEXT_IDENTIFIER, "")
                     context = ast.literal_eval(context)
+                    sql = sql.split("\n" + self.CONTEXT_IDENTIFIER, 1)[0]
 
             json_payload = sql_endpoint(self._parameters, sql, context=context)
 
